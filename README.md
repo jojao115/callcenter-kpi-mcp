@@ -56,7 +56,7 @@ Precisa de Node 22 e Docker.
 git clone https://github.com/jojao115/callcenter-kpi-mcp.git
 cd callcenter-kpi-mcp
 cp .env.example .env
-docker compose run --rm --build seed   # sobe o Postgres e carrega ~54 mil atendimentos fictícios
+docker compose run --rm --build seed   # sobe o Postgres e carrega ~53 mil atendimentos fictícios
 npm install && npm run build
 ```
 
@@ -99,7 +99,7 @@ Sem Docker, os testes rodam contra qualquer Postgres descartável: `TEST_PG_URL=
 - **Três camadas de só leitura.** Usuário do Postgres só com `SELECT`, sessão com `default_transaction_read_only` e tempo máximo por consulta. Tem teste que tenta apagar a tabela pelo pool do servidor e confere que o banco recusa.
 - **Views materializadas com somas, não médias.** `mv_dia_operador` guarda soma de espera e contagem de atendidos por dia e operador. A média de um mês sai da soma das somas, e não da média das médias, que dá peso igual a um dia de 10 e a um de 500 atendimentos.
 - **Fuso explícito.** Todo agrupamento por dia ou hora usa `America/Sao_Paulo`. Um atendimento às 23h30 cai no dia certo, e há teste para isso.
-- **Seed determinístico.** Gerador com semente fixa (mulberry32): mesma semente, mesmos 54 mil atendimentos. Os dados seguem padrões de operação (pico de manhã, segunda cheia, abandono que cresce com a espera, cliente que volta depois de nota baixa), para as perguntas terem resposta interessante.
+- **Seed determinístico.** Gerador com semente fixa (mulberry32): mesma semente e mesma data final (`SEED_DATA_FIM`), os mesmos ~53 mil atendimentos. Os dados seguem padrões de operação (pico de manhã, segunda cheia, abandono que cresce com a espera, cliente que volta depois de nota baixa), para as perguntas terem resposta interessante.
 - **Testes contra Postgres de verdade.** Uma base pequena montada à mão confere cada número de cabeça; outra, gerada, passa por todas as ferramentas pelo protocolo MCP. Cada arquivo de teste usa um banco clonado de um modelo, então rodam em paralelo.
 
 ## Resultado no projeto real

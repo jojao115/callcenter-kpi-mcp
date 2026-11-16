@@ -32,7 +32,8 @@ export function definirFerramenta<S extends z.ZodRawShape>(def: {
   return {
     ...def,
     // O SDK já valida a entrada; validar de novo aqui protege quem chama a função direto (testes).
-    executar: (ctx, args) => def.executar(ctx, esquema.parse(args)),
+    // async: entrada inválida vira promessa rejeitada, e não exceção síncrona na chamada.
+    executar: async (ctx, args) => def.executar(ctx, esquema.parse(args)),
   };
 }
 
