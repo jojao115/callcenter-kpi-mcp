@@ -1,0 +1,42 @@
+# docker compose run --rm --build seed  → sobe o Postgres, cria o esquema e carrega os dados fictícios.
+# O servidor MCP roda por stdio, iniciado pelo cliente (Claude Desktop, Cursor...). Veja o README.
+name: callcenter-kpi-mcp
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kpi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kpi_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-callcenter}
+      MCP_DB_USER: ${MCP_DB_USER:-mcp_leitura}
+      MCP_DB_PASSWORD: ${MCP_DB_PASSWORD:-leitura_dev}
+      TZ: America/Sao_Paulo
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Por TCP: durante os scripts de init o Postgres só escuta no socket local,
+      # e o seed (que conecta por TCP) não pode começar nessa janela.
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  seed:
+    build: .
+    command: ['node', 'dist/seed/run.js']
+    environment:
+      SEED_DATABASE_URL: postgres://${POSTGRES_USER:-kpi}:${POSTGRES_PASSWORD:-kpi_dev}@db:5432/${POSTGRES_DB:-callcenter}
+      SEED: ${SEED:-42}
+      SEED_DIAS: ${SEED_DIAS:-90}
+      SEED_DATA_FIM: ${SEED_DATA_FIM:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+volumes:
+  pgdata:

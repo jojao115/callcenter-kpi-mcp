@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, tipos e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      # Os testes de banco sobem um Postgres descartável com Testcontainers (o runner já tem Docker).
+      - run: npm test
+      - run: npm run build
+
+  compose:
+    name: docker compose sobe com dados
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sobe o banco
+        run: docker compose up -d --wait db
+      - name: Roda o seed
+        run: docker compose run --rm --build seed
+      - name: Confere os dados pelo usuário só de leitura
+        run: |
+          docker compose exec -T -e PGPASSWORD=leitura_dev db \
+            psql -h localhost -U mcp_leitura -d callcenter -tAc \
+            "SELECT count(*) > 40000 FROM atendimentos" | grep -q t
+      - name: Usuário só de leitura não escreve
+        run: |
+          ! docker compose exec -T -e PGPASSWORD=leitura_dev db \
+            psql -h localhost -U mcp_leitura -d callcenter -c "DELETE FROM atendimentos"
+      - if: always()
+        run: docker compose down -v
